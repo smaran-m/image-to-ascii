@@ -1,6 +1,21 @@
+######################
+#   image to ascii   #
+# (c) Smaran Mishra  #
+######################
+
 from PIL import Image, ImageDraw, ImageFont
 import math
-
+print('''
+██╗██████╗  █████╗ 
+║ ║╚════██╗██╔══██╗
+██║ █████╔╝███████║
+██║██╔═══╝ ██╔══██║
+██║███████╗██║  ██║
+╚═╝╚══════╝╚═╝  ╚═╝
+                   
+image to ascii v0.1.2
+''')
+ 
 while True:
     filename = input("Please input the filename of your image: ")
     try:
@@ -11,8 +26,8 @@ while True:
         break
 
 try:
-    sizeC = int(input("Preferred output size [1: Small, 2: Medium, 3: Large]: "))
-    if sizeC not in (1,2,3):
+    sizeC = int(input("Preferred output quality [1: Small, 2: Medium, 3: Large]: "))
+    if sizeC not in (1,2,3, -1):
         raise Exception
 except Exception:
     print("Invalid, choosing default size")
@@ -23,6 +38,9 @@ charHeight = 18
 w,h = image.size
 if sizeC == 0:
     scaleFac = min(0.5, 360/h)
+elif sizeC == -1:
+    print("**WARNING**\nOVERRIDE: static 0.8x scale. This may generate an excessively large image.")
+    scaleFac = 0.8
 else:
     scaleFac = (60+300*(sizeC-1))/h
 image = image.resize((int(scaleFac*w),int(scaleFac*h*(charWidth/charHeight))),Image.NEAREST)
