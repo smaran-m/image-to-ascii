@@ -3,7 +3,14 @@ import math
 
 filename = input("Please input the filename of your image: ")
 image = Image.open("../data/"+filename)
-scaleFac = 0.1
+# Allow output size choice
+'''sizeC = 0
+while sizeC not in (1,2,3):
+    try:
+        sizeC = int(input("Output size [1: Small, 2: Medium, 3: Large]"))
+    except:
+        print("Invalid input. Please enter a number [1,2,3]")'''
+scaleFac = 0.5
 charWidth = 10
 charHeight = 18
 w,h = image.size
@@ -11,7 +18,10 @@ image = image.resize((int(scaleFac*w),int(scaleFac*h*(charWidth/charHeight))),Im
 w,h = image.size
 pixels = image.load()
 
-font = ImageFont.truetype('C:\\Windows\\Fonts\\lucon.ttf',15)
+try:
+    font = ImageFont.truetype('lucon.ttf',15)
+except:
+    font = ImageFont.truetype('Andale Mono.ttf',15)
 outputImage = Image.new('RGB',(charWidth*w,charHeight*h),color=(0,0,0))
 draw = ImageDraw.Draw(outputImage)
 
