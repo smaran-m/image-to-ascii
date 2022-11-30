@@ -1,19 +1,30 @@
 from PIL import Image, ImageDraw, ImageFont
 import math
 
-filename = input("Please input the filename of your image: ")
-image = Image.open("../data/"+filename)
-# Allow output size choice
-'''sizeC = 0
-while sizeC not in (1,2,3):
+while True:
+    filename = input("Please input the filename of your image: ")
     try:
-        sizeC = int(input("Output size [1: Small, 2: Medium, 3: Large]"))
-    except:
-        print("Invalid input. Please enter a number [1,2,3]")'''
-scaleFac = 0.5
+        image = Image.open("../data/"+filename)
+    except Exception:
+        print("File not found. Please ensure your file is present in the data folder")
+    else:
+        break
+
+try:
+    sizeC = int(input("Preferred output size [1: Small, 2: Medium, 3: Large]: "))
+    if sizeC not in (1,2,3):
+        raise Exception
+except Exception:
+    print("Invalid, choosing default size")
+    sizeC = 0
+
 charWidth = 10
 charHeight = 18
 w,h = image.size
+if sizeC == 0:
+    scaleFac = min(0.5, 360/h)
+else:
+    scaleFac = (60+300*(sizeC-1))/h
 image = image.resize((int(scaleFac*w),int(scaleFac*h*(charWidth/charHeight))),Image.NEAREST)
 w,h = image.size
 pixels = image.load()
