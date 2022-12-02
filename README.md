@@ -6,4 +6,5 @@ Followed some steps from [here](https://pub.towardsai.net/convert-images-to-asci
 
 to-do
 - support gif/apng
+- output to text file/html
 - invert color option (white background, dark text)
