@@ -9,8 +9,13 @@ print('''
 image to ascii v0.1.3
 by @smaran_
 ''')
+### TODO
+# - better image size selection (determinate dimensions)
+# - output to text file/html
+# - invert color option (white background, dark text)
+# - speed up gif processing
 #----------
-from PIL import Image, ImageDraw, ImageFont, ImageTk
+from PIL import Image, ImageDraw, ImageTk, ImageSequence, ImageFont, ImageShow
 import os
 import math
 import platform
@@ -29,7 +34,7 @@ filename = tk.StringVar(root)
 filename.set("No file selected")
 
 output_quality = tk.StringVar(root)
-output_quality.set("Output Quality: Low")
+output_quality.set("Output Quality: Medium")
 
 def select_file():
     global filepath, image_preview, label_ascii_art
@@ -87,6 +92,8 @@ def toggle_quality():
         output_quality.set("Output Quality: Medium")
     elif output_quality.get() == "Output Quality: Medium":
         output_quality.set("Output Quality: High")
+    elif output_quality.get() == "Output Quality: High":
+        output_quality.set("Output Quality: Ultra")
     else:
         output_quality.set("Output Quality: Low")
 
@@ -94,25 +101,41 @@ def toggle_quality():
 def generate_image():
     global filepath, font, suppress_warning
 
-    if output_quality.get() == "Output Quality: High":
-        if not messagebox.askokcancel("Warning", "High quality images may be of exceedingly large file size, and can take a while to generate. Use at your own risk."):
+    if output_quality.get() == "Output Quality: Ultra":
+        if not messagebox.askokcancel("Warning", "Ultra quality images may be of exceedingly large file size, and can take a long time to generate.\nUse at your own risk."):
             return
         
     if filepath is None:  # If no file selected, open file dialog
         filepath = select_file()
+
     image = Image.open(filepath)
-    sizeC = ["Output Quality: Low", "Output Quality: Medium", "Output Quality: High"].index(output_quality.get()) + 1
-    
-    charWidth = 10
-    charHeight = 18
-    w,h = image.size
-    if sizeC == 0:
-        scaleFac = min(0.5, 360/h)
-    elif sizeC == -1:
-        print("**WARNING**\nOVERRIDE: static 0.8x scale. This may generate an excessively large image.")
-        scaleFac = 0.8
+
+    if not os.path.exists('./out'):
+        os.mkdir('./out')
+
+    output_filename = "./out/ascii_" + filename.get().split(': ')[-1]
+
+    if filepath.lower().endswith('.gif'):
+        frames = [process_frame(frame) for frame in ImageSequence.Iterator(image)]
+        frames[0].save(output_filename, save_all=True, append_images=frames[1:], loop=0)
     else:
-        scaleFac = (60+300*(sizeC-1))/h
+        outputImage = process_frame(image)
+        outputImage.save(output_filename)
+
+    # Open the output image in the default image viewer
+
+    ImageShow.show(Image.open(output_filename), title='ASCII Art')
+
+def process_frame(image):
+    charWidth = 10
+    charHeight = 14
+    image = image.convert('RGB')
+    w,h = image.size
+    sizeC = ["Output Quality: Low", "Output Quality: Medium", "Output Quality: High", "Output Quality: Ultra"].index(output_quality.get()) + 1
+    if sizeC == 0:
+        scaleFac = min(0.5, 260/h)
+    else:
+        scaleFac = (60+200*(sizeC-1))/h
     image = image.resize((int(scaleFac*w),int(scaleFac*h*(charWidth/charHeight))),Image.Resampling.NEAREST)
     w,h = image.size
     pixels = image.load()
@@ -136,19 +159,11 @@ def generate_image():
             r,g,b = pixels[j,i]
             grey = int((r/3+g/3+b/3))
             pixels[j,i] = (grey,grey,grey)
-            draw.text((j*charWidth,i*charHeight),getSomeChar(grey),
-            font=font,fill = (r,g,b))
+            draw.text((j*charWidth,i*charHeight),getSomeChar(grey), font=font, fill = (r,g,b))
+    return outputImage
 
-    if not os.path.exists('./out'):
-        os.mkdir('./out')
 
-    output_filename = "./out/ascii_" + filename.get().split(': ')[-1]
-    outputImage.save(output_filename)
-
-    # Open the output image in the default image viewer
-    from PIL import ImageShow
-    ImageShow.show(outputImage, title='ASCII Art')
-
+### FONTS
 def get_font():
     if platform.system() == 'Windows':
         return 'lucon'
@@ -163,6 +178,7 @@ def get_font():
 font_name = get_font()
 font_size = 10
 
+### TKINTER
 # Create the widgets
 label_filename = tk.Label(root, textvariable=filename, font=(font_name, 10))
 button_file = tk.Button(root, text="Select File!", command=select_file, font=(font_name, 10))
