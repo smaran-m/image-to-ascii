@@ -11,6 +11,7 @@ by @smaran_
 ''')
 #----------
 from PIL import Image, ImageDraw, ImageFont, ImageTk
+import os
 import math
 import platform
 import tkinter as tk
@@ -60,7 +61,7 @@ def select_file():
         new_width = int(max_height * image_ratio)
 
     # Resize the image maintaining the aspect ratio
-    pil_image = pil_image.resize((new_width, new_height), Image.ANTIALIAS)
+    pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     # Create a Tkinter PhotoImage out of the PIL image
     tk_image = ImageTk.PhotoImage(pil_image)
@@ -137,6 +138,9 @@ def generate_image():
             pixels[j,i] = (grey,grey,grey)
             draw.text((j*charWidth,i*charHeight),getSomeChar(grey),
             font=font,fill = (r,g,b))
+
+    if not os.path.exists('./out'):
+        os.mkdir('./out')
 
     output_filename = "./out/ascii_" + filename.get().split(': ')[-1]
     outputImage.save(output_filename)
