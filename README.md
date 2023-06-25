@@ -1,4 +1,4 @@
-# ascii
+# image to ascii (i2A)
 
 Please install PIL: `pip install pillow`
 
