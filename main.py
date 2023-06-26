@@ -1,19 +1,18 @@
+### TODO
+# - output to text file/html
+# - invert color option (white background, dark text)
+# - speed up gif processing (buffer?)
+vernum = "0.1.4"
+
 print('''
 ██╗██████╗  █████╗ 
 ║ ║╚════██╗██╔══██╗
 ██║ █████╔╝███████║
 ██║██╔═══╝ ██╔══██║
 ██║███████╗██║  ██║
-╚═╝╚══════╝╚═╝  ╚═╝
-                   
-image to ascii v0.1.3
-by @smaran_
-''')
-### TODO
-# - better image size selection (determinate dimensions)
-# - output to text file/html
-# - invert color option (white background, dark text)
-# - speed up gif processing
+╚═╝╚══════╝╚═╝  ╚═╝''')      
+print("image to ascii v"+vernum)
+print("by @smaran_")
 #----------
 from PIL import Image, ImageDraw, ImageTk, ImageSequence, ImageFont, ImageShow
 import os
@@ -23,27 +22,36 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 root = tk.Tk()
-root.title('i2A v0.1.3')
+root.title('i2A '+vernum)
 root.minsize(300, 250)
+root.maxsize(300, 250)
 
 filepath = None
+original_filename = ""
 image_preview = None
 label_kitty = None
 
+color_button_text = tk.StringVar(root)
+color_button_text.set("Color")
+
 filename = tk.StringVar(root)
-filename.set("No file selected")
+filename.set("📂: No file selected")
 
 output_quality = tk.StringVar(root)
-output_quality.set("Output Quality: Medium")
+output_quality.set("Quality: Medium")
 
 def select_file():
-    global filepath, image_preview, label_ascii_art
+    global filepath, image_preview, original_filename, label_kitty
 
-    filepath = filedialog.askopenfilename()
+    filepath = filedialog.askopenfilename(initialdir=os.getcwd())
+    if not filepath:  # If filepath is not empty
+        return None
+    
     file_name = filepath.split('/')[-1]  # Get filename from the path
+    original_filename = file_name  # Store the original filename
     if len(file_name) > 15:  # Limit the length of filename displayed
         file_name = file_name[:12] + '...' 
-    filename.set("Selected File: " + file_name)
+    filename.set("📁: " + file_name)
 
     # Create a PIL image and resize it
     pil_image = Image.open(filepath)
@@ -87,63 +95,74 @@ def select_file():
 
     return filepath
 
-def toggle_quality():
-    if output_quality.get() == "Output Quality: Low":
-        output_quality.set("Output Quality: Medium")
-    elif output_quality.get() == "Output Quality: Medium":
-        output_quality.set("Output Quality: High")
-    elif output_quality.get() == "Output Quality: High":
-        output_quality.set("Output Quality: Ultra")
+def toggle_color():
+    global color_button_text
+    if color_button_text.get() == "Color":
+        color_button_text.set("Greyscale")
     else:
-        output_quality.set("Output Quality: Low")
+        color_button_text.set("Color")
+
+def toggle_quality():
+    if output_quality.get() == "Quality: Low":
+        output_quality.set("Quality: Medium")
+    elif output_quality.get() == "Quality: Medium":
+        output_quality.set("Quality: High")
+    elif output_quality.get() == "Quality: High":
+        output_quality.set("Quality: Ultra")
+    else:
+        output_quality.set("Quality: Low")
 
 # Open file dialog to select an image file
 def generate_image():
-    global filepath, font, suppress_warning
+    global filepath, font
 
-    if output_quality.get() == "Output Quality: Ultra":
+    if output_quality.get() == "Quality: Ultra":
         if not messagebox.askokcancel("Warning", "Ultra quality images may be of exceedingly large file size, and can take a long time to generate.\nUse at your own risk."):
             return
         
     if filepath is None:  # If no file selected, open file dialog
         filepath = select_file()
-
     image = Image.open(filepath)
 
     if not os.path.exists('./out'):
         os.mkdir('./out')
 
-    output_filename = "./out/ascii_" + filename.get().split(': ')[-1]
-
-    if filepath.lower().endswith('.gif'):
-        frames = [process_frame(frame) for frame in ImageSequence.Iterator(image)]
-        frames[0].save(output_filename, save_all=True, append_images=frames[1:], loop=0)
-    else:
-        outputImage = process_frame(image)
-        outputImage.save(output_filename)
-
-    # Open the output image in the default image viewer
-
-    ImageShow.show(Image.open(output_filename), title='ASCII Art')
-
-def process_frame(image):
-    charWidth = 10
-    charHeight = 14
-    image = image.convert('RGB')
-    w,h = image.size
-    sizeC = ["Output Quality: Low", "Output Quality: Medium", "Output Quality: High", "Output Quality: Ultra"].index(output_quality.get()) + 1
-    if sizeC == 0:
-        scaleFac = min(0.5, 260/h)
-    else:
-        scaleFac = (60+200*(sizeC-1))/h
-    image = image.resize((int(scaleFac*w),int(scaleFac*h*(charWidth/charHeight))),Image.Resampling.NEAREST)
-    w,h = image.size
-    pixels = image.load()
-
     try:
         font = ImageFont.truetype('lucon.ttf',15)
     except:
         font = ImageFont.truetype('Andale Mono.ttf',15)
+
+    output_basename = os.path.splitext(original_filename)[0]  # Get the base name of the original file
+    if filepath.lower().endswith('.gif'):
+        output_filename = "./out/ascii_" + output_basename + ".gif"
+        frames = [process_frame(frame, font) for frame in ImageSequence.Iterator(image)]
+        frames[0].save(output_filename, save_all=True, append_images=frames[1:], loop=0)
+    else:
+        output_filename = "./out/ascii_" + output_basename + ".png"
+        outputImage = process_frame(image, font)
+        outputImage.save(output_filename)
+
+    # Open the output image in the default image viewer
+    ImageShow.show(Image.open(output_filename), title='ASCII Art')
+
+
+def process_frame(image, font):
+    charWidth = 10
+    charHeight = 14
+    image = image.convert('RGB')
+    w,h = image.size
+    # Here, instead of "sizeC", use an explicit mapping to the maximum widths.
+    max_widths = [1000, 2000, 4000, 8000]
+    quality_index = ["Quality: Low", "Quality: Medium", "Quality: High", "Quality: Ultra"].index(output_quality.get())
+    max_width = max_widths[quality_index]
+    
+    # Calculate the scale factor to achieve the desired width, but don't let it go over 1 (to avoid upsizing).
+    scaleFac = min(1, max_width / w / charWidth)
+
+    image = image.resize((int(scaleFac*w), int(scaleFac*h*(charWidth/charHeight))), Image.Resampling.NEAREST)
+    w, h = image.size
+    pixels = image.load()
+
     outputImage = Image.new('RGB',(charWidth*w,charHeight*h),color=(0,0,0))
     draw = ImageDraw.Draw(outputImage)
 
@@ -154,12 +173,17 @@ def process_frame(image):
         mul = l/256
         return charArr[math.floor(h*mul)]
 
+    color = (color_button_text.get() == "Color")
+
     for i in range(h):
         for j in range(w):
             r,g,b = pixels[j,i]
             grey = int((r/3+g/3+b/3))
             pixels[j,i] = (grey,grey,grey)
-            draw.text((j*charWidth,i*charHeight),getSomeChar(grey), font=font, fill = (r,g,b))
+            if (color):
+                draw.text((j*charWidth,i*charHeight),getSomeChar(grey), font=font, fill = (r,g,b))
+            else:
+                draw.text((j*charWidth,i*charHeight),getSomeChar(grey), font=font, fill = (grey, grey, grey))
     return outputImage
 
 
@@ -169,8 +193,6 @@ def get_font():
         return 'lucon'
     elif platform.system() == 'Darwin': #MacOS
         return 'Andale Mono' 
-    elif platform.system() == 'Linux':
-        return 'Andale Mono'
     else:
         return 'Courier New'
 
@@ -180,12 +202,11 @@ font_size = 10
 
 ### TKINTER
 # Create the widgets
-label_filename = tk.Label(root, textvariable=filename, font=(font_name, 10))
-button_file = tk.Button(root, text="Select File!", command=select_file, font=(font_name, 10))
-label_quality = tk.Label(root, textvariable=output_quality, font=(font_name, 10))
-button_quality = tk.Button(root, text="Toggle Quality", command=toggle_quality, font=(font_name, 10))
-button_generate = tk.Button(root, text="Generate Image", command=generate_image, font=(font_name, 10))
+button_file = tk.Button(root, textvariable=filename, command=select_file, font=(font_name, 10))
+button_quality = tk.Button(root, textvariable=output_quality, command=toggle_quality, font=(font_name, 10))
 label_credit = tk.Label(root, text="a tool by @smaran_", font=(font_name, 8))
+button_color = tk.Button(root, textvariable=color_button_text, command=toggle_color, font=(font_name, 10))
+button_generate = tk.Button(root, text="Generate Image", command=generate_image, font=(font_name, 12))
 
 ascii_art = """
 
@@ -197,16 +218,19 @@ ascii_art = """
 label_kitty = tk.Label(root, text=ascii_art, font=(font_name, 20))
 
 # Arrange the widgets
-label_filename.grid(row=0, column=0, columnspan=1)
 button_file.grid(row=1, column=0, sticky='ew')
-label_quality.grid(row=0, column=1, columnspan=1)
 button_quality.grid(row=1, column=1, sticky='ew')
-button_generate.grid(row=2, column=0, columnspan=2, sticky='ew')
+button_color.grid(row=2, column=1, sticky='ew')
+label_credit.grid(row=2, column=0, columnspan=1)
 label_kitty.grid(row=3, column=0, columnspan=2)
-label_credit.grid(row=4, column=0, columnspan=2)
+button_generate.grid(row=5, column=0, columnspan=2, sticky='nsew')
 
-root.grid_columnconfigure(0, weight=1)
-root.grid_columnconfigure(1, weight=1)
+for i in range(6):  # Assume you have 6 rows
+    root.grid_rowconfigure(i, weight=1)
+for i in range(2):  # Assume you have 2 columns
+    root.grid_columnconfigure(i, weight=1)
+
+root.grid_rowconfigure(4, weight=10)  # 10 is arbitrarily chosen; any large number would work
 
 root.mainloop()
 
