@@ -1,6 +1,6 @@
 # image to ascii (i2A)
 ## usage
-- install PIL: `pip install pillow`
+- install reqs: `pip install -r requirements.txt`
 - run script
 - images are output to `./out`
 
