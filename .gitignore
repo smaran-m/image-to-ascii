@@ -1,3 +1,9 @@
 out/*
 data/*
 .DS_Store
+build/*
+dist/*
+build
+dist
+*.manifest
+*.spec

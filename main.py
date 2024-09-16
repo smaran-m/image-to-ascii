@@ -1,8 +1,8 @@
 ### TODO
 # - output to text file/html
-# - invert color option (white background, dark text)
 # - speed up gif processing (buffer?)
-vernum = "0.1.4"
+# - refactoring
+vernum = "0.2.0"
 
 print('''
 ██╗██████╗  █████╗ 
@@ -23,8 +23,8 @@ from tkinter import filedialog, messagebox
 
 root = tk.Tk()
 root.title('i2A '+vernum)
-root.minsize(300, 250)
-root.maxsize(300, 250)
+root.minsize(400, 300)  # Increase the minimum size of the window for better button scaling
+#root.geometry('500x400')  # Optional: Set a starting size that looks good for the buttons
 
 filepath = None
 original_filename = ""
@@ -39,6 +39,18 @@ filename.set("📂: No file selected")
 
 output_quality = tk.StringVar(root)
 output_quality.set("Quality: Medium")
+
+charsets = {
+    "Simple": " .:-=+*#%@",
+    "Detailed": "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. "[::-1],
+    "Blocks": "░▒▓█"
+}
+
+charset_var = tk.StringVar(root)
+charset_var.set("Simple")
+
+charset_preview_var = tk.StringVar(root)
+charset_preview_var.set(charsets[charset_var.get()])
 
 def select_file():
     global filepath, image_preview, original_filename, label_kitty
@@ -97,8 +109,11 @@ def select_file():
 
 def toggle_color():
     global color_button_text
-    if color_button_text.get() == "Color":
+    current_mode = color_button_text.get()
+    if current_mode == "Color":
         color_button_text.set("Greyscale")
+    elif current_mode == "Greyscale":
+        color_button_text.set("Invert")
     else:
         color_button_text.set("Color")
 
@@ -111,6 +126,19 @@ def toggle_quality():
         output_quality.set("Quality: Ultra")
     else:
         output_quality.set("Quality: Low")
+
+def toggle_charset():
+    """ Toggle between different charsets """
+    current_charset = charset_var.get()
+    if current_charset == "Simple":
+        charset_var.set("Detailed")
+    elif current_charset == "Detailed":
+        charset_var.set("Blocks")
+    else:
+        charset_var.set("Simple")
+
+    charset_preview_var.set(charsets[charset_var.get()])
+
 
 # Open file dialog to select an image file
 def generate_image():
@@ -162,18 +190,30 @@ def process_frame(image, font):
     image = image.resize((int(scaleFac*w), int(scaleFac*h*(charWidth/charHeight))), Image.Resampling.NEAREST)
     w, h = image.size
     pixels = image.load()
+    
+    if color_button_text.get() == "Invert":
+        background_color = (255, 255, 255)  # White background
+    else:
+        background_color = (0, 0, 0)  # Default black background
 
-    outputImage = Image.new('RGB',(charWidth*w,charHeight*h),color=(0,0,0))
+    outputImage = Image.new('RGB', (charWidth*w, charHeight*h), color=background_color)
     draw = ImageDraw.Draw(outputImage)
 
     def getSomeChar(h):
-        chars  = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. "[::-1]
+        selected_charset = charset_var.get()
+        chars = charsets[selected_charset]
+        
+        # Reverse the charset if we're in Invert mode
+        if color_button_text.get() == "Invert":
+            chars = chars[::-1]
+        
         charArr = list(chars)
         l = len(charArr)
-        mul = l/256
-        return charArr[math.floor(h*mul)]
+        mul = l / 256
+        return charArr[math.floor(h * mul)]
 
-    color = (color_button_text.get() == "Color")
+
+    color = not (color_button_text.get() == "Greyscale")
 
     for i in range(h):
         for j in range(w):
@@ -190,7 +230,7 @@ def process_frame(image, font):
 ### FONTS
 def get_font():
     if platform.system() == 'Windows':
-        return 'lucon'
+        return 'Courier'
     elif platform.system() == 'Darwin': #MacOS
         return 'Andale Mono' 
     else:
@@ -202,14 +242,16 @@ font_size = 10
 
 ### TKINTER
 # Create the widgets
-button_file = tk.Button(root, textvariable=filename, command=select_file, font=(font_name, 10))
-button_quality = tk.Button(root, textvariable=output_quality, command=toggle_quality, font=(font_name, 10))
-label_credit = tk.Label(root, text="a tool by @smaran_", font=(font_name, 8))
-button_color = tk.Button(root, textvariable=color_button_text, command=toggle_color, font=(font_name, 10))
-button_generate = tk.Button(root, text="Generate Image", command=generate_image, font=(font_name, 12))
+button_file = tk.Button(root, textvariable=filename, command=select_file, font=(font_name, font_size))
+button_quality = tk.Button(root, textvariable=output_quality, command=toggle_quality, font=(font_name, font_size))
+label_credit = tk.Label(root, text="a tool by @smaran_", font=(font_name, int(font_size * 0.8)))
+label_charset_preview = tk.Label(root, textvariable=charset_preview_var, font=(font_name, int(font_size * 0.8)))
+button_color = tk.Button(root, textvariable=color_button_text, command=toggle_color, font=(font_name, font_size))
+button_generate = tk.Button(root, text="Generate Image", command=generate_image, font=(font_name, int(font_size * 1.2)))
+button_charset = tk.Button(root, text="Charset: Simple", command=lambda: [toggle_charset(), button_charset.config(text=f"Charset: {charset_var.get()}")], font=(font_name, 10))
+
 
 ascii_art = """
-
   ／\、      
 （ﾟ､ ｡ ７   
   l  ~ヽ   
@@ -221,16 +263,19 @@ label_kitty = tk.Label(root, text=ascii_art, font=(font_name, 20))
 button_file.grid(row=1, column=0, sticky='ew')
 button_quality.grid(row=1, column=1, sticky='ew')
 button_color.grid(row=2, column=1, sticky='ew')
-label_credit.grid(row=2, column=0, columnspan=1)
-label_kitty.grid(row=3, column=0, columnspan=2)
-button_generate.grid(row=5, column=0, columnspan=2, sticky='nsew')
+button_charset.grid(row=2, column=0, sticky='ew')
+# row 3 for image preview
+label_charset_preview.grid(row=5, column=0, columnspan=2)
+label_kitty.grid(row=4, column=0, columnspan=2)
+label_credit.grid(row=6, column=0, columnspan=2)
+button_generate.grid(row=7, column=0, columnspan=2, sticky='nsew')
 
-for i in range(6):  # Assume you have 6 rows
+for i in range(7):  # Assume you have 6 rows
     root.grid_rowconfigure(i, weight=1)
 for i in range(2):  # Assume you have 2 columns
     root.grid_columnconfigure(i, weight=1)
 
-root.grid_rowconfigure(4, weight=10)  # 10 is arbitrarily chosen; any large number would work
+root.grid_rowconfigure(5, weight=2)  # 10 is arbitrarily chosen; any large number would work
 
 root.mainloop()
 

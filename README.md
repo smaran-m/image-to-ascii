@@ -4,7 +4,7 @@
 - run script
 - images are output to `./out`
 
-[blog post](https://www.smarancod.es/projects/i2a/)
+[blog post (outdated)](https://www.smarancod.es/projects/i2a/)
 
 ## acknowledgements
 thank you to Andy Sloane and Pushkara Sharma,
